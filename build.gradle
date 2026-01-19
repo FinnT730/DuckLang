@@ -1,0 +1,42 @@
+plugins {
+    id 'java'
+    id 'antlr'
+    id 'application'
+}
+
+mainClassName = 'nl.finnt730.Main'
+
+sourceSets {
+    main {
+        java {
+            srcDirs += [tasks.generateGrammarSource.outputDirectory]
+        }
+    }
+}
+
+group = 'nl.finnt730'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    antlr "org.antlr:antlr4:4.13.1"
+    implementation "org.antlr:antlr4-runtime:4.13.1"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+generateGrammarSource {
+    maxHeapSize = "64m"
+    arguments += ["-visitor", "-no-listener"]
+}
+
+compileJava.dependsOn generateGrammarSource
+

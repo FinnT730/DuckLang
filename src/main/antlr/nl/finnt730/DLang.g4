@@ -7,13 +7,28 @@ package nl.finnt730;
 /*
  * Parser Rules
  */
-compileUnit : statement* EOF;
+compileUnit : (functionDeclaration | statement)* EOF;
+
+functionDeclaration
+    : FUNC ID LPAREN (parameters)? RPAREN block
+    ;
+
+parameters
+    : ID (COMMA ID)*
+    ;
+
+block
+    : LBRACE statement* RBRACE
+    ;
 
 statement
     : printStatement
     | variableStatement
+    | assignmentStatement
     | expressionStatement
     | ifStatement
+    | whileStatement
+    | returnStatement
     ;
 
 printStatement
@@ -24,8 +39,28 @@ variableStatement
     : VAR ID ASSIGN expression SEMI
     ;
 
+assignmentStatement
+    : ID ASSIGN expression SEMI
+    ;
+
 expressionStatement
     : expression SEMI
+    ;
+
+ifStatement
+    : IF LPAREN condition RPAREN block (ELSE block)?
+    ;
+
+whileStatement
+    : WHILE LPAREN condition RPAREN block
+    ;
+
+returnStatement
+    : RETURN expression? SEMI
+    ;
+
+condition
+    : expression (operator=(GRT|LST|EQ|NEQ) expression)?
     ;
 
 expression
@@ -41,17 +76,18 @@ multiplicative
     ;
 
 primary
-    : INT
-    | ID
-    | '(' expression ')'
+    : INT                                #IntegerLiteral
+    | STRING                             #StringLiteral
+    | BOOL                               #BooleanLiteral
+    | LPAREN expression RPAREN           #ParenthesizedExpression
+    | LBRACK listContents? RBRACK        #ArrayLiteral
+    | ID LPAREN listContents? RPAREN     #FunctionCall
+    | ID LBRACK expression RBRACK        #ArrayAccess
+    | ID                                 #Identifier
     ;
 
-ifStatement
-    : IF LPAREN condition RPAREN LBRACE (thenBlock+=statement)* RBRACE (ELSE LBRACE (elseBlock+=statement)* RBRACE)?
-    ;
-
-condition
-    : expression operator=(GRT|LST) expression
+listContents
+    : expression (COMMA expression)*
     ;
 
 /*
@@ -62,6 +98,10 @@ LPAREN : '(' ;
 RPAREN : ')' ;
 LBRACE : '{' ;
 RBRACE : '}' ;
+LBRACK : '[' ;
+RBRACK : ']' ;
+COMMA : ',' ;
+
 ADD : '+';
 SUB : '-';
 MUL : '*';
@@ -71,12 +111,19 @@ SEMI : ';' ;
 
 GRT : '>' ;
 LST : '<' ;
+EQ : '==' ;
+NEQ : '!=' ;
 
 PRINT : 'print';
 VAR : 'var' ;
 IF : 'if' ;
 ELSE : 'else' ;
+WHILE : 'while' ;
+FUNC : 'func' ;
+RETURN : 'return' ;
 
+BOOL : 'true' | 'false' ;
 ID : [a-zA-Z_][a-zA-Z0-9_]*;
 INT : [0-9]+;
+STRING : '"' .*? '"' ;
 WS : [ \t\r\n]+ -> skip;

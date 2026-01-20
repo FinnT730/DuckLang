@@ -12,16 +12,23 @@ public class Main {
     public static void main(String[] args) {
         String input = """
                 
-                var x = 10;
-                var sussy = 100;
-                print(x * sussy);
+                var arr = [1,2,3,4,5,6,7,8,9,10];
                 
-                if (x > sussy) {
-                    print(1);
-                } else {
-                    print(0);
+                func mod(a, b) {
+                    return a - (b * (a / b));
                 }
                 
+                func printEvenNumbers(array) {
+                    var i = 0;
+                    while (i < 10) {
+                        if (mod(array[i], 2) == 0) {
+                            print(array[i]);
+                        }
+                        i = i + 1;
+                    }
+                }
+                
+                printEvenNumbers(arr);
                 """;
 
         try {

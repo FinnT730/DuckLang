@@ -445,4 +445,10 @@ public class LangEvaluatorVisitor2 extends DLangBaseVisitor<Object> {
         if (obj instanceof Integer) return (Integer) obj != 0;
         return obj != null;
     }
+
+    @Override
+    public Object visitDebug(DLangParser.DebugContext ctx) {
+        System.out.println("DEBUG: " + visit(ctx.primary()));
+        return super.visitDebug(ctx);
+    }
 }

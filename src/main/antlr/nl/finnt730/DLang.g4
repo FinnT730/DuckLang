@@ -42,6 +42,7 @@ statement
     | whileStatement
     | foreachStatement
     | returnStatement
+    | debug
     ;
 
 variableDeclaration
@@ -86,6 +87,10 @@ additive
 
 multiplicative
     : primary ((MUL|DIV) primary)*
+    ;
+
+debug
+    : DEBUG primary
     ;
 
 primary
@@ -150,6 +155,8 @@ FUNC : 'func' ;
 RETURN : 'return' ;
 CLASS : 'class' ;
 STATIC : 'static' ;
+
+DEBUG : 'debug' ;
 
 BOOL : 'true' | 'false' ;
 ID : [a-zA-Z_][a-zA-Z0-9_]*;

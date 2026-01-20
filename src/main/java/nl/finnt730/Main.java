@@ -15,39 +15,42 @@ main :: class() {
         
         // Array creation
         var arr = [10, 20, 30]
-        system::println("Original array: " + arr)
+//        system::println("Original array: " + arr)
         
         // Array access
         int val = arr[1]
-        system::println("Value at index 1: " + val)
+//        system::println("Value at index 1: " + val)
         
         // Array assignment
         arr[1] = 99
-        system::println("Modified array: " + arr)
-        system::println("New value at index 1: " + arr[1])
+//        system::println("Modified array: " + arr)
+//        system::println("New value at index 1: " + arr[1])
         
         // Arrays of arrays
         var matrix = [[1, 2], [3, 4]]
-        system::println("Matrix: " + matrix)
+//        system::println("Matrix: " + matrix)
         
         // Accessing nested array
         var row0 = matrix[0]
-        system::println("Row 0: " + row0)
+//        system::println("Row 0: " + row0)
         
         // Chained access
         int cell = matrix[1][0]
-        system::println("Cell [1][0]: " + cell)
+//        system::println("Cell [1][0]: " + cell)
         
         // Setting nested array value
         matrix[1][0] = 55
-        system::println("Modified Matrix: " + matrix)
-        system::println("Cell [1][0] is now: " + matrix[1][0])
+        
+        debug matrix
+        
+//        system::println("Modified Matrix: " + matrix)
+//        system::println("Cell [1][0] is now: " + matrix[1][0])
 
         // Add to list
         var list = [1, 2]
         list.add(3)
-        system::println("List after add: " + list)
-        system::println("Size: " + list.size())
+//        system::println("List after add: " + list)
+//        system::println("Size: " + list.size())
     }
 }
                 """;

@@ -449,6 +449,7 @@ public class LangEvaluatorVisitor2 extends DLangBaseVisitor<Object> {
     @Override
     public Object visitDebug(DLangParser.DebugContext ctx) {
         System.out.println("DEBUG: " + visit(ctx.primary()));
+//        System.out.println("extra: " + ctx.DEBUG().getParent());
         return super.visitDebug(ctx);
     }
 }

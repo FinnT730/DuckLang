@@ -7,14 +7,27 @@ package nl.finnt730;
 /*
  * Parser Rules
  */
-compileUnit : (functionDeclaration | statement)* EOF;
+compileUnit : classDeclaration* EOF;
 
-functionDeclaration
-    : FUNC ID LPAREN (parameters)? RPAREN block
+classDeclaration
+    : ID DCOLON CLASS LPAREN RPAREN LBRACE memberDeclaration* RBRACE
+    ;
+
+memberDeclaration
+    : (STATIC)? ID DCOLON FUNC LPAREN parameters? RPAREN block
     ;
 
 parameters
-    : ID (COMMA ID)*
+    : parameter (COMMA parameter)*
+    ;
+
+parameter
+    : ID COLON type
+    ;
+
+type
+    : ID
+    | LBRACK RBRACK ID
     ;
 
 block
@@ -22,29 +35,25 @@ block
     ;
 
 statement
-    : printStatement
-    | variableStatement
+    : variableDeclaration
     | assignmentStatement
     | expressionStatement
     | ifStatement
     | whileStatement
+    | foreachStatement
     | returnStatement
     ;
 
-printStatement
-    : PRINT LPAREN expression RPAREN SEMI
-    ;
-
-variableStatement
-    : VAR ID ASSIGN expression SEMI
+variableDeclaration
+    : (type | VAR) ID ASSIGN expression
     ;
 
 assignmentStatement
-    : ID ASSIGN expression SEMI
+    : ID ASSIGN expression
     ;
 
 expressionStatement
-    : expression SEMI
+    : expression
     ;
 
 ifStatement
@@ -55,8 +64,12 @@ whileStatement
     : WHILE LPAREN condition RPAREN block
     ;
 
+foreachStatement
+    : FOREACH LPAREN type ID COLON expression RPAREN block
+    ;
+
 returnStatement
-    : RETURN expression? SEMI
+    : RETURN expression?
     ;
 
 condition
@@ -76,14 +89,20 @@ multiplicative
     ;
 
 primary
-    : INT                                #IntegerLiteral
-    | STRING                             #StringLiteral
-    | BOOL                               #BooleanLiteral
-    | LPAREN expression RPAREN           #ParenthesizedExpression
-    | LBRACK listContents? RBRACK        #ArrayLiteral
-    | ID LPAREN listContents? RPAREN     #FunctionCall
-    | ID LBRACK expression RBRACK        #ArrayAccess
-    | ID                                 #Identifier
+    : (
+        INT
+        | STRING
+        | CHAR
+        | BOOL
+        | LPAREN expression RPAREN
+        | LBRACK listContents? RBRACK
+        | ID LPAREN listContents? RPAREN
+        | ID DCOLON ID LPAREN listContents? RPAREN
+        | STATIC DCOLON ID LPAREN listContents? RPAREN
+        | ID LBRACK expression RBRACK
+        | ID
+      )
+      (DOT ID LPAREN listContents? RPAREN)*
     ;
 
 listContents
@@ -94,6 +113,9 @@ listContents
  * Lexer Rules
  */
 
+LINE_COMMENT : '//' ~[\r\n]* -> skip ;
+BLOCK_COMMENT : '/*' .*? '*/' -> skip ;
+
 LPAREN : '(' ;
 RPAREN : ')' ;
 LBRACE : '{' ;
@@ -101,13 +123,15 @@ RBRACE : '}' ;
 LBRACK : '[' ;
 RBRACK : ']' ;
 COMMA : ',' ;
+COLON : ':' ;
+DCOLON : '::' ;
+DOT : '.' ;
 
 ADD : '+';
 SUB : '-';
 MUL : '*';
 DIV : '/';
 ASSIGN : '=';
-SEMI : ';' ;
 
 GRT : '>' ;
 LST : '<' ;
@@ -119,11 +143,15 @@ VAR : 'var' ;
 IF : 'if' ;
 ELSE : 'else' ;
 WHILE : 'while' ;
+FOREACH : 'foreach' ;
 FUNC : 'func' ;
 RETURN : 'return' ;
+CLASS : 'class' ;
+STATIC : 'static' ;
 
 BOOL : 'true' | 'false' ;
 ID : [a-zA-Z_][a-zA-Z0-9_]*;
 INT : [0-9]+;
 STRING : '"' .*? '"' ;
+CHAR : '\'' . '\'' ;
 WS : [ \t\r\n]+ -> skip;

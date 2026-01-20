@@ -1,0 +1,27 @@
+main :: class() {
+
+    main :: func(args: []String) {
+        system::println("Hello World!")
+
+        int x = 10
+        int y = 20
+        int sum = x + y
+
+        system::println("The sum of " + x + " and " + y + " is " + sum)
+
+    }
+
+    static dummy :: func() {
+        String dummy = "Hello World, this is a function"
+        // toCharArray() is a runtime function that converts a String to a char array
+        var arr = dummy.toCharArray()
+        foreach(char c : arr) {
+            if(c = = ' ') {
+                system::println("Space found!")
+            } else {
+                system::println(c)
+            }
+        }
+    }
+
+}

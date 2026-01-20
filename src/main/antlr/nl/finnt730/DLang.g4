@@ -49,7 +49,7 @@ variableDeclaration
     ;
 
 assignmentStatement
-    : ID ASSIGN expression
+    : ID (LBRACK expression RBRACK)* ASSIGN expression
     ;
 
 expressionStatement
@@ -99,10 +99,12 @@ primary
         | ID LPAREN listContents? RPAREN
         | ID DCOLON ID LPAREN listContents? RPAREN
         | STATIC DCOLON ID LPAREN listContents? RPAREN
-        | ID LBRACK expression RBRACK
         | ID
       )
-      (DOT ID LPAREN listContents? RPAREN)*
+      (
+          LBRACK expression RBRACK
+        | DOT ID LPAREN listContents? RPAREN
+      )*
     ;
 
 listContents

@@ -92,15 +92,60 @@ public class LangEvaluatorVisitor2 extends DLangBaseVisitor<Object> {
     @Override
     public Object visitAssignmentStatement(DLangParser.AssignmentStatementContext ctx) {
         String id = ctx.ID().getText();
-        Object value = visit(ctx.expression());
+        List<Object> indices = new ArrayList<>();
+        // Collect indices.
+        // ctx.expression() returns list of expressions.
+        // If (LBRACK expression RBRACK)* is present, we have N expressions for indices.
+        // And one expression at end for value.
+        // Check LBRACK count.
+        int bracketCount = ctx.LBRACK().size();
 
+        List<DLangParser.ExpressionContext> exprs = ctx.expression();
+        // Assuming the last expression is the value to assign.
+        // And the first 'bracketCount' expressions are indices.
+
+        Object value = visit(exprs.get(exprs.size() - 1));
+
+        for (int i = 0; i < bracketCount; i++) {
+             indices.add(visit(exprs.get(i)));
+        }
+
+        // Find variable
+        Map<String, Object> scope = null;
         for (int i = scopes.size() - 1; i >= 0; i--) {
             if (scopes.get(i).containsKey(id)) {
-                scopes.get(i).put(id, value);
-                return null;
+                scope = scopes.get(i);
+                break;
             }
         }
-        throw new RuntimeException("Variable not assigned: " + id);
+
+        if (scope == null) throw new RuntimeException("Variable not assigned: " + id);
+
+        if (indices.isEmpty()) {
+            scope.put(id, value);
+        } else {
+             Object current = scope.get(id);
+             // Traverse to the last container
+             for (int i = 0; i < indices.size() - 1; i++) {
+                  Object idx = indices.get(i);
+                  if (current instanceof List) {
+                      current = ((List<?>)current).get((Integer)idx);
+                  } else if (current instanceof char[]) {
+                       // Cannot proceed deeper into primitive array unless it was Object[] but char[] is leaf usually?
+                       throw new RuntimeException("Cannot index into char array for multi-dimensional access");
+                  }
+             }
+
+             // Set value at last index
+             Object lastIndex = indices.get(indices.size() - 1);
+             if (current instanceof List) {
+                 ((List<Object>)current).set((Integer)lastIndex, value);
+             } else if (current instanceof char[]) {
+                 ((char[])current)[(Integer)lastIndex] = (Character)value; // Assuming value is char?
+                 // Or cast depending on what logic you want.
+             }
+        }
+        return null;
     }
 
     @Override
@@ -174,7 +219,9 @@ public class LangEvaluatorVisitor2 extends DLangBaseVisitor<Object> {
             result = Boolean.parseBoolean(ctx.BOOL().getText());
         } else if (startType == DLangParser.LPAREN) {
             // ( expression )
-            result = visit(ctx.getChild(1));
+            // expression is first child inside parens.
+            // LPAREN expression RPAREN
+            result = visit(ctx.expression(0));
         } else if (startType == DLangParser.LBRACK) {
             // [ ... ]
             List<Object> list = new ArrayList<>();
@@ -195,8 +242,7 @@ public class LangEvaluatorVisitor2 extends DLangBaseVisitor<Object> {
                  throw new RuntimeException("Static function " + method + " not found.");
             }
         } else if (startType == DLangParser.ID) {
-            // Ambiguous starts with ID
-            // Check second token
+            // Check second token to distinguish Call vs Var vs Static Call
             int secondType = -1;
             if (ctx.getChildCount() > 1 && ctx.getChild(1) instanceof TerminalNode) {
                  secondType = ((TerminalNode)ctx.getChild(1)).getSymbol().getType();
@@ -207,16 +253,6 @@ public class LangEvaluatorVisitor2 extends DLangBaseVisitor<Object> {
                  String func = ctx.ID(0).getText();
                  List<Object> args = getArgs(ctx.listContents(0));
                  result = callFunction(func, args);
-            } else if (secondType == DLangParser.LBRACK) {
-                 // ID [ expression ]
-                 String name = ctx.ID(0).getText();
-                 Object index = visit(ctx.getChild(2));
-                 Object arr = resolveVariable(name);
-                  if(arr instanceof char[]) {
-                       result = ((char[])arr)[(Integer)index];
-                  } else if (arr instanceof List) {
-                       result = ((List<?>)arr).get((Integer)index);
-                  }
             } else if (secondType == DLangParser.DCOLON) {
                  // ID :: ID ( ... )
                  String cls = ctx.ID(0).getText();
@@ -241,30 +277,77 @@ public class LangEvaluatorVisitor2 extends DLangBaseVisitor<Object> {
             }
         }
 
-        // Handle Method Chaining (.id(...))*
-        // iterating children to find DOT is safer.
+        // Loop for suffixes: [expr] or .id(...)
+        // We iterate children.
+        // We need to keep track of expression index and listContents index.
+        // Since we visited some expressions/listContents in the 'start' block, start counters appropriately.
+
+        // Count how many expressions/listContents were consumed by start block
+        int exprIdx = 0;
+        int listIdx = 0;
+
+        if (startType == DLangParser.LPAREN) exprIdx = 1; // ( expr )
+        else if (startType == DLangParser.LBRACK) listIdx = 1; // [ list? ]
+        else if (startType == DLangParser.ID) {
+             int secondType = -1;
+             if (ctx.getChildCount() > 1 && ctx.getChild(1) instanceof TerminalNode)
+                  secondType = ((TerminalNode)ctx.getChild(1)).getSymbol().getType();
+
+             if (secondType == DLangParser.LPAREN) listIdx = 1;
+             else if (secondType == DLangParser.DCOLON) listIdx = 1;
+             else if (startType == DLangParser.STATIC) listIdx = 1;
+        }
+
         for (int i = 0; i < ctx.getChildCount(); i++) {
              ParseTree child = ctx.getChild(i);
-             if (child instanceof TerminalNode && ((TerminalNode)child).getSymbol().getType() == DLangParser.DOT) {
-                 // Found a chain part: DOT ID LPAREN listContents? RPAREN
-                 // i is DOT.
-                 // i+1 is ID.
-                 // i+2 is LPAREN.
-                 // i+3 is listContents OR RPAREN.
+             if (child instanceof TerminalNode) {
+                 int type = ((TerminalNode)child).getSymbol().getType();
+                 if (type == DLangParser.DOT) {
+                     // . id ( ... )
+                     // i is DOT
+                     String methodName = ctx.getChild(i+1).getText();
 
-                 String methodName = ctx.getChild(i+1).getText();
+                     // Check if listContents exists.
+                     // DOT ID LPAREN listContents? RPAREN
+                     // i+2 is LPAREN. i+3 is listContents or RPAREN.
+                     ParseTree possibleList = ctx.getChild(i+3);
+                     List<Object> args = new ArrayList<>();
+                     if (possibleList instanceof DLangParser.ListContentsContext) {
+                          args = getArgs((DLangParser.ListContentsContext)possibleList);
+                          // We consumed one listContents
+                          listIdx++;
+                     }
 
-                 ParseTree next = ctx.getChild(i+3);
-                 List<Object> args = new ArrayList<>();
-                 if (next instanceof DLangParser.ListContentsContext) {
-                      args = getArgs((DLangParser.ListContentsContext)next);
+                     if (result instanceof String && methodName.equals("toCharArray")) {
+                          result = ((String)result).toCharArray();
+                     } else if (result instanceof List && methodName.equals("add")) {
+                          ((List<Object>)result).add(args.get(0));
+                     } else if (result instanceof List && methodName.equals("size")) {
+                           result = ((List<?>)result).size();
+                     }
+
+                 } else if (type == DLangParser.LBRACK) {
+                     // Check if it's start type [ ... ] or suffix [ ... ]
+                     // If it's the very first token, it's array creation, already handled.
+                     if (i == 0) continue;
+
+                     // suffix [ expr ]
+                     // Handled here.
+                     // i is LBRACK. i+1 is expression. i+2 is RBRACK.
+                     // But wait, the child at i+1 IS the ExpressionContext.
+                     // The generic ctx.expression(exprIdx) gives us the contexts in order.
+                     ParseTree exprChild = ctx.getChild(i+1);
+                     if (exprChild instanceof DLangParser.ExpressionContext) {
+                         // This is safer than relying on exprIdx if we scan linear.
+                         // But we can use visits.
+                         Object index = visit(exprChild);
+                         if (result instanceof List) {
+                              result = ((List<?>)result).get((Integer)index);
+                         } else if (result instanceof char[]) {
+                              result = ((char[])result)[(Integer)index];
+                         }
+                     }
                  }
-
-                 // Execute method
-                 if (result instanceof String && methodName.equals("toCharArray")) {
-                      result = ((String)result).toCharArray();
-                 }
-                 // Add other methods if needed
              }
         }
 
